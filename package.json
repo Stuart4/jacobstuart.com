@@ -5,6 +5,7 @@
   "scripts": {
     "build": "env NODE_ENV=production npx eleventy --pathprefix 'eleventy-gh-demo'",
     "serve": "npx eleventy --serve",
+    "deply": "git subtree push --prefix _site origin gh-pages"
     "debug": "DEBUG=* npx eleventy",
     "test": "jest"
   },
