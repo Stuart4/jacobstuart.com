@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jacob Stuart</title>
+
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<header>
+    <h1><a href="/" class="link--home">Jacob Stuart</a></h1>
+    <p>
+        <a href="/">Home</a> |
+        <a href="/about">About</a> |
+        <a href="/contact">Contact</a>
+    </p>
+    <hr>
+</header>
+<main>
+  <article>
+  <h1>Securely Exposing Docker Services With Mutual TLS and Caddy</h1>
+  <time datetime="2024-03-24T00:00:00.000Z">March 24, 2024</time>
+  <!-- Excerpt Start -->
+<p><img src="/img/2024/caddy-mutual-tls/hero.png" alt="hero image"></p>
+<p>Securely expose self hosted services to the internet without authentication and without a VPN by setting up <a href="https://caddyserver.com/">Caddy</a> and <a href="https://www.cloudflare.com/learning/access-management/what-is-mutual-tls/">mutual TLS</a>.</p>
+<!-- Excerpt End -->
+<h2>Why mTLS?</h2>
+<p>Unlike traditional TLS where only servers are authenticated, mutual TLS (mTLS) enforces a two-way handshake. Clients present certificates signed by trusted authorities, ensuring both parties are who they say they are. This provides enhanced security by eliminating impersonation attacks and aligns perfectly with zero-trust models. Using mTLS means we can expose our services to the entirety of the internet but only our devices (phones, laptops, desktops) can connect and they can do so from anywhere in the world without the hassle of toggling a VPN on or off, without having to constantly reauthenticate, and without having to depend on a third party service that could introduce an additional point of failure.</p>
+<h2>Set Up</h2>
+<p>This guide assumes you already have a domain pointing to your home network, Caddy installed, Caddy port forwarded to by your router, a service defined in caddy, and openssl installed on the machine.</p>
+<p>e.g.</p>
+<pre><code>service.example.com {
+    reverse_proxy helloworld:80
+}
+</code></pre>
+<h3>Generate Certificates</h3>
+<p>Create a certificate authority (CA) that will issue valid certificates for our devices.</p>
+<pre><code class="language-bash">openssl genpkey -algorithm RSA -out ca-key.pem
+openssl req -new -x509 -days 3650 -key ca-key.pem -out ca-cert.pem
+</code></pre>
+<p>Now we have a CA private key (<code>ca-key.pem</code>) and a self-signed CA certificate (<code>ca-cert.pem</code>) that will be valid for ten years.</p>
+<p>Next, we will generate a client key and a certificate signing request (CSR).</p>
+<pre><code class="language-bash">openssl genpkey -algorithm RSA -out client-key.pem
+openssl req -new -days 3650 -key client-key.pem -out client-csr.pem
+</code></pre>
+<p>This will generate a client private key (<code>client-key.pem</code>) and a client CSR (<code>client-csr.pem</code>). When creating the CSR, provide the requested information, such as Common Name (CN), Organization (O), etc.</p>
+<p>Next, we will use our CA to sign the CSR.</p>
+<pre><code class="language-bash">openssl x509 -days 3650 -req -in client-csr.pem -CA ca-cert.pem -CAkey ca-key.pem -out client-cert.pem -CAcreateserial
+</code></pre>
+<p>This command will sign the client CSR with our CA certificate and create a client certificate (<code>client-cert.pem</code>).</p>
+<p>To use the client certificate and key in a PKCS#12 format (P12), you can export them using the following command:</p>
+<pre><code class="language-bash">openssl pkcs12 -export -in client-cert.pem -inkey client-key.pem -out client.p12
+</code></pre>
+<p>You will be prompted to set a password for the P12 file. This password will be required when importing the P12 into client applications.</p>
+<p>Now you have a CA certificate (<code>ca-cert.pem</code>), a client certificate (<code>client-cert.pem</code>), and a client private key (<code>client-key.pem</code>) ready for use with mutual TLS. The client certificate and key are also bundled in a PKCS#12 file (<code>client.p12</code>) for convenience. Securely send the client.p12 to your devices and import it using the password set before.</p>
+<p>Remember to securely store and manage these certificates and keys, especially the CA key, as it is critical for issuing and verifying certificates in your mutual TLS setup.</p>
+<h3>Config Changes</h3>
+<p>Add the following struct to the top of your Caddyfile rewriting <code>/data/mtls/ca-cert.pem</code> to point to the location that Caddy can read your <code>ca-cert.pem</code>.</p>
+<pre><code>(mtls) {
+  tls {
+    client_auth {
+      mode require_and_verify
+      trusted_ca_cert_file /data/mtls/ca-cert.pem
+    }
+  }
+</code></pre>
+<p>For each service that will be exposed to the internet, add <code>import mtls</code> as the first line. Then, Caddy will challenge clients before forwarding any data to/from the downstream service.</p>
+<p>e.g.</p>
+<pre><code>service.example.com {
+    import mtls
+    reverse_proxy helloworld:80
+}
+</code></pre>
+<p>Now, connecting to your service on iOS will show the following prompt for devices with your certificate installed and an SSL error for all other devices.</p>
+<p><img src="/img/2024/caddy-mutual-tls/example.jpeg" alt="Mutual tls prompt on iOS"></p>
+
+</article>
+</main>
+<footer>&copy; Jacob Stuart</footer>
+</body>
+</html>
