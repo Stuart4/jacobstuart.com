@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+  <meta name="apple-mobile-web-app-title" content="JacobStuart.com">
+  <meta name="application-name" content="JacobStuart.com">
+  <meta name="msapplication-TileColor" content="#b7bbbe">
+  <meta name="theme-color" content="#ffffff">
+  <title>Jacob Stuart</title>
+
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<header>
+    <h1><a href="/" class="link--home">Jacob Stuart</a></h1>
+    <p>
+        <a href="/">Home</a> |
+        <a href="/about">About</a> |
+        <a href="/contact">Contact</a>
+    </p>
+    <hr>
+</header>
+<main>
+  <article>
+  <h1>Caddy Could Be Leaking Your Secret Domains</h1>
+  <time datetime="2024-08-09T00:00:00.000Z">August 9, 2024</time>
+  <!-- Excerpt Start -->
+<p><img src="/img/2024/caddy-wildcard-tls/hero.jpeg" alt="hero image"></p>
+<p>You may be inadvertantly leaking the subdomains of your homelab for everyone to see on the internet.</p>
+<!-- Excerpt End -->
+<blockquote>
+<p>It is generally illadvised to apply this advice to production serves or services not intended to be kept private/secret. The NSA wrote about this topic in <a href="https://www.nsa.gov/Press-Room/News-Highlights/Article/Article/2804293/avoid-dangers-of-wildcard-tls-certificates-the-alpaca-technique/">Avoid Dangers of Wildcard TLS Certificates, the ALPACA Technique</a></p>
+</blockquote>
+<p>There are many websites that monitor ssl certificate registers for new registrations and expose this information for all. One such website is <a href="https://crt.sh">https://crt.sh</a>.</p>
+<p><img src="/img/2024/caddy-wildcard-tls/crt.sh.png" alt="example screenshot"></p>
+<p>If you had a subdomain where your stored your secrets like secrets.example.com, it would appear on sites like this with the standard Caddy configuration.</p>
+<p>To have Caddy always uses a wildcard certificate for all your domains, ensure each domain and subdomain in your Caddyfile as has a wildcard definition. For instance, if you already have definitions for secrets.example.com and moresecrets.team.example.com, you will need:</p>
+<pre><code>*.example.com {
+  respond &quot;Access denied.&quot; 403
+}
+
+*.team.example.com {
+  respond &quot;Access denied.&quot; 403
+}
+</code></pre>
+<blockquote>
+<p>Let's Encrypt requires using the DNS Challenge to be able to use wildcards.</p>
+</blockquote>
+
+</article>
+</main>
+<footer>&copy; Jacob Stuart</footer>
+</body>
+</html>
